@@ -1,0 +1,765 @@
+<title>Schwarmfänger</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#07061a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Schwarmfänger">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Chakra+Petch:wght@400;600&display=swap">
+<style>
+/* Layout: Arcade-Röhre links, Steuerpult-Notizen rechts; auf dem Handy untereinander mit Touch-Tasten */
+:root {
+  --void: #07061a;
+  --panel: #110f2e;
+  --line: #2a2660;
+  --ink: #e8ecff;
+  --dim: #8f8cc4;
+  --cyan: #5ef2ff;
+  --magenta: #ff4fa3;
+  --gold: #ffc94a;
+  --beam: #b48cff;
+  --ally: #7dffb0;
+  --f-display: "Silkscreen", "Courier New", monospace;
+  --f-body: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: radial-gradient(ellipse at 50% 0%, #15123d 0%, var(--void) 60%) fixed, var(--void);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 15px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px;
+  box-sizing: border-box;
+}
+.wrap {
+  display: flex; flex-wrap: wrap; gap: 24px;
+  justify-content: center; align-items: flex-start;
+  max-width: 1000px; margin: 0 auto;
+}
+.cab { display: flex; flex-direction: column; gap: 10px; align-items: center; flex: 0 1 auto; min-width: 0; width: min(100%, calc((100dvh - 48px) * 0.75), 540px); }
+canvas {
+  display: block; width: 100%; aspect-ratio: 3 / 4; height: auto; max-width: 100%;
+  background: var(--void);
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 0 0 6px #0c0a24, 0 0 60px rgba(94, 242, 255, 0.08);
+  image-rendering: pixelated;
+  touch-action: none;
+}
+.screen { position: relative; width: 100%; container-type: inline-size; }
+.start {
+  position: absolute; left: 50%; top: 86%; transform: translate(-50%, -50%);
+  font-family: var(--f-display); font-weight: 700; font-size: clamp(9px, 4.2cqw, 20px); letter-spacing: 0.06em; white-space: nowrap;
+  color: var(--void); background: var(--cyan);
+  border: 0; border-radius: 6px; padding: 0.7em 1.4em; cursor: pointer;
+  box-shadow: 0 4px 0 #2a9fb0, 0 0 30px rgba(94, 242, 255, 0.45);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.start:hover { background: #8ff7ff; }
+.start:active { transform: translate(-50%, calc(-50% + 3px)); box-shadow: 0 1px 0 #2a9fb0; }
+.start:focus-visible { outline: 3px solid var(--magenta); outline-offset: 4px; }
+.start.over { top: 64%; background: var(--magenta); box-shadow: 0 4px 0 #a32c68, 0 0 30px rgba(255, 79, 163, 0.45); }
+@keyframes pulse { 50% { filter: brightness(1.15); } }
+@media (prefers-reduced-motion: reduce) { .start { animation: none; } }
+.pad { display: none; width: 100%; gap: 8px; grid-template-columns: 1fr 1fr 1.3fr 1.3fr; }
+@media (pointer: coarse) { .pad { display: grid; } }
+.touch .pad { display: grid; }
+.pad button {
+  font-family: var(--f-display); font-size: 13px; color: var(--ink);
+  background: var(--panel); border: 2px solid var(--line); border-radius: 8px;
+  padding-block: 18px; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.pad button.fire { border-color: var(--cyan); color: var(--cyan); }
+.pad button.beam { border-color: var(--beam); color: var(--beam); }
+.pad button:active, .pad button.on { background: #1d1a4a; }
+
+aside { flex: 1 1 300px; max-width: 380px; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+h1 {
+  font-family: var(--f-display); font-weight: 700; font-size: 30px; line-height: 1.05; margin: 0;
+  letter-spacing: 0.02em; text-wrap: balance;
+  color: var(--ink); text-shadow: 3px 3px 0 var(--magenta);
+}
+.sub { color: var(--dim); margin: 6px 0 0; line-height: 1.5; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.card h2 { font-family: var(--f-display); font-size: 13px; letter-spacing: 0.08em; margin: 0 0 10px; color: var(--beam); font-weight: 400; }
+.card p { margin: 0; line-height: 1.55; }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
+.keys dt { font-family: var(--f-display); font-size: 12px; color: var(--cyan); white-space: nowrap; padding-top: 2px; }
+.keys dd { margin: 0; color: var(--ink); }
+.roster { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.roster li { display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center; }
+.roster canvas { width: 33px; height: auto; aspect-ratio: auto; border: 0; box-shadow: none; background: transparent; border-radius: 0; }
+.roster b { font-weight: 600; }
+.roster span { color: var(--dim); font-size: 13px; display: block; }
+</style>
+
+<div class="wrap">
+  <div class="cab">
+    <div class="screen">
+      <canvas id="game" width="480" height="640" aria-label="Spielfeld Schwarmfänger" tabindex="0"></canvas>
+      <button id="start" class="start" type="button">SPIEL STARTEN</button>
+    </div>
+    <div class="pad" id="pad">
+      <button data-k="left" aria-label="Nach links">◀</button>
+      <button data-k="right" aria-label="Nach rechts">▶</button>
+      <button data-k="fire" class="fire">FEUER</button>
+      <button data-k="beam" class="beam">STRAHL</button>
+    </div>
+  </div>
+  <aside>
+    <div>
+      <h1>Schwarmfänger</h1>
+      <p class="sub">Ein Insektenschwarm sammelt sich über dir und stürzt sich in Wellen herab. Diesmal hast du den Fangstrahl.</p>
+    </div>
+    <div class="card">
+      <h2>DIE WENDUNG</h2>
+      <p>Jeder Abschuss lädt deinen Fangstrahl. Ist er voll, fang damit einen Angreifer im Sturzflug ein. Er dreht um und fliegt als Flügelmann neben dir, mit seiner eigenen Schussart. Bis zu zwei passen in deine Staffel. Jeder Flügelmann, der eine Stufe überlebt, bringt 500 Bonuspunkte.</p>
+    </div>
+    <div class="card">
+      <h2>STEUERUNG</h2>
+      <dl class="keys">
+        <dt>← →  A D</dt><dd>Bewegen</dd>
+        <dt>LEERTASTE</dt><dd>Feuern (gedrückt halten)</dd>
+        <dt>X  ↑</dt><dd>Fangstrahl, wenn die Leiste voll ist</dd>
+        <dt>P</dt><dd>Pause</dd>
+        <dt>M</dt><dd>Ton an/aus</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h2>DER SCHWARM</h2>
+      <ul class="roster" id="roster"></ul>
+    </div>
+  </aside>
+</div>
+
+<script>
+(() => {
+const W = 480, H = 640;
+if (navigator.maxTouchPoints > 0 || 'ontouchstart' in window) document.documentElement.classList.add('touch');
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+function fit() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = W * dpr; cv.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+}
+fit();
+addEventListener('resize', fit);
+
+// ---------- Sprites ----------
+function mk(rows, pal, px = 3) {
+  const c = document.createElement('canvas');
+  c.width = rows[0].length * px; c.height = rows.length * px;
+  const g = c.getContext('2d');
+  rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (pal[ch]) { g.fillStyle = pal[ch]; g.fillRect(x * px, y * px, px, px); }
+  }));
+  return c;
+}
+const SHAPES = {
+  P: [[
+    ".....A.....",
+    "....ABA....",
+    "....ABA....",
+    "...AABAA...",
+    ".C.AAAAA.C.",
+    ".CAAAAAAAC.",
+    "CCAACACAACC",
+    "C.AA...AA.C",
+    "...D...D...",
+  ]],
+  D: [[
+    "....XXX....",
+    "..XXXXXXX..",
+    ".XXYXXXYXX.",
+    ".XXXXXXXXX.",
+    "..XXXXXXX..",
+    "..X.X.X.X..",
+    ".X..X.X..X.",
+    "....X.X....",
+  ], [
+    "....XXX....",
+    "..XXXXXXX..",
+    ".XXYXXXYXX.",
+    ".XXXXXXXXX.",
+    "..XXXXXXX..",
+    "...X.X.X...",
+    "..X.X.X.X..",
+    "..X.....X..",
+  ]],
+  S: [[
+    "X.........X",
+    "XX...X...XX",
+    ".XX.XXX.XX.",
+    "..XXXYXXX..",
+    "...XXXXX...",
+    "....XXX....",
+    ".....X.....",
+  ], [
+    "...........",
+    "X....X....X",
+    "XXX.XXX.XXX",
+    ".XXXXYXXXX.",
+    "...XXXXX...",
+    "....XXX....",
+    ".....X.....",
+  ]],
+  W: [[
+    "..Z.Z.Z.Z..",
+    "..ZZZZZZZ..",
+    ".XXXXXXXXX.",
+    "XXYYXXXYYXX",
+    "XXXXXXXXXXX",
+    ".XX.XXX.XX.",
+    "XX...X...XX",
+    "X.........X",
+  ], [
+    "..Z.Z.Z.Z..",
+    "..ZZZZZZZ..",
+    ".XXXXXXXXX.",
+    "XXYYXXXYYXX",
+    "XXXXXXXXXXX",
+    "..XXXXXXX..",
+    ".XX..X..XX.",
+    "..X.....X..",
+  ]],
+};
+const PAL = {
+  D: { X: '#5ef2ff', Y: '#ffffff' },
+  S: { X: '#ff4fa3', Y: '#ffe14f' },
+  W: { X: '#ffc94a', Y: '#ff4f6d', Z: '#b48cff' },
+  Wd: { X: '#ff8a3d', Y: '#ff4f6d', Z: '#b48cff' },
+};
+const SPR = {}, ALLY = {};
+for (const t of ['D', 'S', 'W']) {
+  SPR[t] = SHAPES[t].map(r => mk(r, PAL[t]));
+  ALLY[t] = SHAPES[t].map(r => mk(r, { ...PAL[t], Y: '#7dffb0' }));
+}
+SPR.Wd = SHAPES.W.map(r => mk(r, PAL.Wd));
+const PLAYER = mk(SHAPES.P[0], { A: '#e8ecff', B: '#5ef2ff', C: '#ff4fa3', D: '#ffb347' });
+const COLOR = { D: '#5ef2ff', S: '#ff4fa3', W: '#ffc94a' };
+const INFO = {
+  D: { name: 'Qualle', pts: 50, wing: 'schießt gerade nach vorn' },
+  S: { name: 'Stachler', pts: 80, wing: 'feuert zwei Schrägschüsse' },
+  W: { name: 'Wächter', pts: 150, wing: 'feuert Doppelschüsse, braucht 2 Treffer' },
+};
+
+// Legende in der Seitenleiste
+const roster = document.getElementById('roster');
+for (const t of ['W', 'S', 'D']) {
+  const li = document.createElement('li');
+  const c = document.createElement('canvas');
+  c.width = SPR[t][0].width; c.height = SPR[t][0].height;
+  c.getContext('2d').drawImage(SPR[t][0], 0, 0);
+  const d = document.createElement('div');
+  d.innerHTML = `<b>${INFO[t].name}</b> · ${INFO[t].pts} / ${INFO[t].pts * (t === 'W' ? 8 / 3 : 2) | 0} im Sturzflug<span>Als Flügelmann: ${INFO[t].wing}</span>`;
+  li.append(c, d); roster.append(li);
+}
+
+// ---------- Audio ----------
+let actx = null, muted = false;
+function beep(f, dur = 0.08, type = 'square', vol = 0.06, slide = 0) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.02);
+  } catch (e) {}
+}
+const sfx = {
+  shot: () => beep(880, 0.06, 'square', 0.03, -400),
+  hit: () => beep(220, 0.12, 'sawtooth', 0.05, -150),
+  boom: () => { beep(120, 0.35, 'sawtooth', 0.08, -90); beep(70, 0.4, 'triangle', 0.08, -40); },
+  beam: () => beep(300, 1.2, 'sine', 0.05, 600),
+  catch: () => { beep(523, 0.1, 'square', 0.05); setTimeout(() => beep(784, 0.15, 'square', 0.05), 90); setTimeout(() => beep(1046, 0.2, 'square', 0.05), 190); },
+  dive: () => beep(600, 0.4, 'triangle', 0.025, -450),
+  clear: () => [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => beep(f, 0.14, 'square', 0.05), i * 110)),
+};
+
+// ---------- Helpers ----------
+const rand = (a, b) => a + Math.random() * (b - a);
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+function bez(p0, p1, p2, p3, t) {
+  const u = 1 - t;
+  return {
+    x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x,
+    y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y,
+  };
+}
+let hi = 0;
+try { hi = +localStorage.getItem('schwarm-hi') || 0; } catch (e) {}
+
+// ---------- State ----------
+let state = 'title', paused = false, T = 0;
+let stage = 1, score = 0, lives = 3, energy = 0;
+let player, bullets = [], ebullets = [], enemies = [], wingmen = [], parts = [], popups = [], beam, diveTimer, stageTimer, banner;
+const stars = Array.from({ length: 90 }, () => ({ x: rand(0, W), y: rand(0, H), z: rand(0.2, 1) }));
+
+function newGame() {
+  stage = 1; score = 0; lives = 3; energy = 0;
+  wingmen = [];
+  startStage();
+}
+function startStage() {
+  player = player && !player.dead ? player : { x: W / 2, y: 590, dead: false, timer: 0, inv: 0, cd: 0 };
+  player.x = player.x || W / 2;
+  bullets = []; ebullets = []; parts = parts || []; popups = [];
+  beam = null;
+  enemies = [];
+  diveTimer = 3.5;
+  banner = { text: `STUFE ${stage}`, t: 2.2 };
+  state = 'play';
+  const layout = [['W', [3, 4, 5, 6]], ['S', [1, 2, 3, 4, 5, 6, 7, 8]], ['S', [1, 2, 3, 4, 5, 6, 7, 8]], ['D', [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]], ['D', [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]];
+  const list = [];
+  layout.forEach(([type, cols], r) => cols.forEach(c => list.push({ type, r, c })));
+  // Einflug-Gruppen: von innen nach außen gemischt
+  list.sort((a, b) => (Math.abs(a.c - 4.5) + (a.r === 0 ? -9 : 0)) - (Math.abs(b.c - 4.5) + (b.r === 0 ? -9 : 0)) || a.r - b.r);
+  list.forEach((s, i) => {
+    const g = Math.floor(i / 8), left = g % 2 === 0;
+    const m = left ? 1 : -1, cx = W / 2;
+    enemies.push({
+      type: s.type, r: s.r, c: s.c, hp: s.type === 'W' ? 2 : 1,
+      mode: 'wait', delay: 1.8 + g * 1.5 + (i % 8) * 0.13, t: 0, dur: 2.3,
+      x: -99, y: -99, ang: 0, anim: Math.random(),
+      p0: { x: cx - m * 100, y: -30 }, p1: { x: cx - m * 280, y: 430 }, p2: { x: cx + m * 170, y: 470 },
+      shots: [], fired: 0,
+    });
+  });
+}
+function slotPos(e) {
+  const sway = Math.sin(T * 0.9) * 28;
+  const br = stage >= 3 ? Math.sin(T * 1.7) * 0.07 : 0;
+  return { x: W / 2 + (e.c - 4.5) * 38 * (1 + br) + sway, y: 84 + e.r * 36 * (1 + br * 0.6) };
+}
+function setPos(e, q) {
+  const dx = q.x - e.x, dy = q.y - e.y;
+  if (dx * dx + dy * dy > 0.2) e.ang = Math.atan2(dy, dx) - Math.PI / 2;
+  e.x = q.x; e.y = q.y;
+}
+
+// ---------- Input ----------
+const keys = {}, touch = {};
+addEventListener('keydown', e => {
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) e.preventDefault();
+  if (!keys[e.code]) press(e.code);
+  keys[e.code] = true;
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+function press(code) {
+  if ((code === 'Space' || code === 'Enter') && (state === 'title' || state === 'over')) { newGame(); return; }
+  if (code === 'KeyP' && state === 'play') paused = !paused;
+  if (code === 'KeyM') muted = !muted;
+  if (code === 'KeyX' || code === 'ArrowUp' || code === 'ShiftLeft' || code === 'ShiftRight') tryBeam();
+}
+document.querySelectorAll('#pad button').forEach(b => {
+  const k = b.dataset.k;
+  const on = e => { e.preventDefault(); touch[k] = true; b.classList.add('on');
+    if (state === 'title' || state === 'over') newGame(); else if (k === 'beam') tryBeam(); };
+  const off = e => { e.preventDefault(); touch[k] = false; b.classList.remove('on'); };
+  b.addEventListener('pointerdown', on);
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => b.addEventListener(ev, off));
+});
+cv.addEventListener('pointerdown', () => { cv.focus(); if (state === 'title' || state === 'over') newGame(); });
+const startBtn = document.getElementById('start');
+startBtn.addEventListener('click', () => { newGame(); syncStart(); cv.focus({ preventScroll: true }); });
+function syncStart() {
+  const show = state === 'title' || state === 'over';
+  if (startBtn.hidden === show) startBtn.hidden = !show;
+  startBtn.classList.toggle('over', state === 'over');
+  const label = state === 'over' ? 'NOCHMAL SPIELEN' : 'SPIEL STARTEN';
+  if (startBtn.textContent !== label) startBtn.textContent = label;
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') paused = true; });
+
+// ---------- Actions ----------
+function fire() {
+  if (bullets.filter(b => b.own === 'p').length >= 3) return;
+  bullets.push({ x: player.x, y: player.y - 16, vx: 0, vy: -640, own: 'p', col: '#5ef2ff' });
+  for (const w of wingmen) {
+    const x = player.x + w.side * 32, y = player.y - 6, col = COLOR[w.type];
+    if (w.type === 'D') bullets.push({ x, y, vx: 0, vy: -620, own: 'w', col });
+    if (w.type === 'S') { bullets.push({ x, y, vx: -110, vy: -600, own: 'w', col }); bullets.push({ x, y, vx: 110, vy: -600, own: 'w', col }); }
+    if (w.type === 'W') { bullets.push({ x: x - 5, y, vx: 0, vy: -680, own: 'w', col }); bullets.push({ x: x + 5, y, vx: 0, vy: -680, own: 'w', col }); }
+  }
+  sfx.shot();
+}
+function tryBeam() {
+  if (state !== 'play' || paused || player.dead || beam || energy < 100 || wingmen.length >= 2) return;
+  energy = 0;
+  beam = { t: 0, dur: 1.5 };
+  sfx.beam();
+}
+function freeSide() {
+  const used = wingmen.map(w => w.side).concat(enemies.filter(e => e.mode === 'captured').map(e => e.side));
+  return used.includes(-1) ? 1 : -1;
+}
+function explode(x, y, col, n = 18) {
+  for (let i = 0; i < n; i++) {
+    const a = rand(0, Math.PI * 2), s = rand(40, 220);
+    parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(0.35, 0.8), max: 0.8, col: Math.random() < 0.3 ? '#ffffff' : col });
+  }
+}
+function kill(e) {
+  const diving = e.mode === 'dive' || e.mode === 'return';
+  let pts = INFO[e.type].pts;
+  if (diving) pts = e.type === 'W' ? 400 : pts * 2;
+  score += pts;
+  energy = Math.min(100, energy + (diving ? 18 : 9));
+  explode(e.x, e.y, COLOR[e.type]);
+  if (diving) popups.push({ x: e.x, y: e.y, text: String(pts), t: 1 });
+  enemies.splice(enemies.indexOf(e), 1);
+  sfx.boom();
+}
+function killPlayer() {
+  if (player.dead || player.inv > 0) return;
+  player.dead = true; player.timer = 2.4;
+  explode(player.x, player.y, '#e8ecff', 40);
+  for (const w of wingmen) explode(player.x + w.side * 32, player.y, COLOR[w.type], 20);
+  wingmen = [];
+  beam = null;
+  enemies.filter(e => e.mode === 'captured').forEach(e => enemies.splice(enemies.indexOf(e), 1));
+  lives--;
+  sfx.boom();
+}
+function enemyShot(e) {
+  const dx = player.x - e.x, dy = Math.max(60, player.y - e.y);
+  const sp = 210 + stage * 12, len = Math.hypot(dx, dy);
+  let vx = dx / len * sp; vx = Math.max(-110, Math.min(110, vx));
+  ebullets.push({ x: e.x, y: e.y + 12, vx, vy: Math.sqrt(sp * sp - vx * vx) });
+}
+function startDive(e, delay = 0) {
+  const side = e.x < W / 2 ? -1 : 1;
+  const tx = player.x + rand(-40, 40);
+  e.mode = 'dive'; e.t = -delay; e.dur = Math.max(1.9, 2.8 - stage * 0.09);
+  e.p0 = { x: e.x, y: e.y };
+  e.p1 = { x: e.x + side * 120, y: e.y - 80 };
+  e.p2 = { x: tx - side * 160, y: 430 };
+  e.p3 = { x: tx + side * 70, y: H + 40 };
+  const n = Math.min(3, 1 + Math.floor(stage / 2)) + (e.type === 'W' ? 1 : 0);
+  e.shots = Array.from({ length: n }, () => rand(0.3, 0.65)).sort();
+  e.fired = 0;
+}
+
+// ---------- Update ----------
+function update(dt) {
+  T += dt;
+  for (const s of stars) { s.y += (20 + s.z * 70) * dt; if (s.y > H) { s.y = 0; s.x = rand(0, W); } }
+  for (const p of parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy *= 0.96; p.life -= dt; }
+  parts = (parts || []).filter(p => p.life > 0);
+  if (state !== 'play' || paused) return;
+  if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
+  for (const p of popups) { p.t -= dt; p.y -= 20 * dt; }
+  popups = popups.filter(p => p.t > 0);
+
+  // Spieler
+  if (player.dead) {
+    player.timer -= dt;
+    if (player.timer <= 0) {
+      if (lives <= 0) { state = 'over'; saveHi(); return; }
+      if (!enemies.some(e => e.mode === 'dive')) { player.dead = false; player.inv = 2; player.x = W / 2; }
+    }
+  } else {
+    player.inv = Math.max(0, player.inv - dt);
+    const left = keys.ArrowLeft || keys.KeyA || touch.left, right = keys.ArrowRight || keys.KeyD || touch.right;
+    const sp = beam ? 110 : 260;
+    player.x += ((right ? 1 : 0) - (left ? 1 : 0)) * sp * dt;
+    const pad = 20 + (wingmen.some(w => w.side === -1) ? 32 : 0), padR = 20 + (wingmen.some(w => w.side === 1) ? 32 : 0);
+    player.x = Math.max(pad, Math.min(W - padR, player.x));
+    player.cd -= dt;
+    if ((keys.Space || touch.fire) && player.cd <= 0 && !beam) { fire(); player.cd = 0.2; }
+  }
+
+  // Fangstrahl
+  if (beam) {
+    beam.t += dt;
+    if (!player.dead && !beam.caught) {
+      for (const e of enemies) {
+        if (e.mode !== 'dive' && e.mode !== 'enter') continue;
+        const dy = player.y - 14 - e.y;
+        if (dy < 10 || dy > 290) continue;
+        const hw = 10 + (dy / 290) * 40;
+        if (Math.abs(e.x - player.x) < hw + 8) {
+          e.mode = 'captured'; e.t = 0; e.sx = e.x; e.sy = e.y; e.side = freeSide();
+          beam.caught = true; beam.t = Math.max(beam.t, beam.dur - 0.25);
+          sfx.catch();
+          break;
+        }
+      }
+    }
+    if (beam.t >= beam.dur) beam = null;
+  }
+
+  // Gegner
+  const enteredAll = enemies.every(e => e.mode !== 'wait' && e.mode !== 'enter');
+  for (const e of [...enemies]) {
+    e.anim += dt;
+    const s = slotPos(e);
+    if (e.mode === 'wait') { e.delay -= dt; if (e.delay <= 0) { e.mode = 'enter'; e.t = 0; e.x = e.p0.x; e.y = e.p0.y; } }
+    else if (e.mode === 'enter') {
+      e.t += dt / e.dur;
+      setPos(e, bez(e.p0, e.p1, e.p2, s, Math.min(1, e.t)));
+      if (stage >= 2 && Math.random() < 0.003 * stage && e.y < player.y - 150) enemyShot(e);
+      if (e.t >= 1) e.mode = 'form';
+    } else if (e.mode === 'form') {
+      e.x = s.x; e.y = s.y; e.ang *= 0.85;
+    } else if (e.mode === 'dive') {
+      e.t += dt / e.dur;
+      if (e.t < 0) { e.x = s.x; e.y = s.y; continue; }
+      setPos(e, bez(e.p0, e.p1, e.p2, e.p3, Math.min(1, e.t)));
+      while (e.fired < e.shots.length && e.t > e.shots[e.fired]) { if (!player.dead && e.y < player.y - 90) enemyShot(e); e.fired++; }
+      if (e.t >= 1) { e.mode = 'return'; e.t = 0; e.sx = s.x; e.x = s.x; e.y = -30; e.ang = Math.PI; }
+    } else if (e.mode === 'return') {
+      e.t += dt / 1.2;
+      const p = ease(Math.min(1, e.t));
+      e.x = lerp(e.sx, s.x, p); e.y = lerp(-30, s.y, p); e.ang = lerp(Math.PI, 0, p);
+      if (e.t >= 1) e.mode = 'form';
+    } else if (e.mode === 'captured') {
+      e.t += dt / 0.9;
+      const p = ease(Math.min(1, e.t));
+      e.x = lerp(e.sx, player.x + e.side * 32, p); e.y = lerp(e.sy, player.y + 2, p);
+      e.ang += dt * 14 * (1 - p) + 0.001;
+      if (e.t >= 1) {
+        enemies.splice(enemies.indexOf(e), 1);
+        wingmen.push({ type: e.type, side: e.side, born: T });
+        popups.push({ x: player.x + e.side * 32, y: player.y - 30, text: 'FLÜGELMANN!', t: 1.4, col: '#7dffb0' });
+      }
+    }
+  }
+
+  // Sturzflüge planen
+  if (enteredAll && !player.dead) {
+    diveTimer -= dt;
+    const diving = enemies.filter(e => e.mode === 'dive' || e.mode === 'return').length;
+    const maxDive = 2 + Math.floor(stage / 2) + (enemies.length < 10 ? 2 : 0);
+    if (diveTimer <= 0 && diving < maxDive) {
+      const pool = enemies.filter(e => e.mode === 'form');
+      if (pool.length) {
+        const e = pool[Math.floor(Math.random() * pool.length)];
+        startDive(e);
+        if (e.type === 'W') {
+          enemies.filter(o => o.mode === 'form' && o.r === 1 && Math.abs(o.c - e.c) <= 1).slice(0, 2)
+            .forEach((o, i) => startDive(o, 0.08 + i * 0.06));
+        }
+        sfx.dive();
+      }
+      diveTimer = Math.max(0.5, 2.3 - stage * 0.18) * rand(0.7, 1.2) * (enemies.length < 10 ? 0.6 : 1);
+    }
+  }
+
+  // Geschosse
+  for (const b of bullets) { b.x += b.vx * dt; b.y += b.vy * dt; }
+  bullets = bullets.filter(b => b.y > -20 && b.x > -10 && b.x < W + 10);
+  for (const b of ebullets) { b.x += b.vx * dt; b.y += b.vy * dt; }
+  ebullets = ebullets.filter(b => b.y < H + 20);
+
+  // Treffer: Spielerschüsse gegen Gegner
+  for (const b of [...bullets]) {
+    for (const e of enemies) {
+      if (e.mode === 'wait' || e.mode === 'captured' || (e.mode === 'dive' && e.t < 0 && false)) continue;
+      if (Math.abs(b.x - e.x) < 16 && Math.abs(b.y - e.y) < 14) {
+        bullets.splice(bullets.indexOf(b), 1);
+        e.hp--;
+        if (e.hp <= 0) kill(e); else { sfx.hit(); explode(e.x, e.y, '#ff8a3d', 6); }
+        break;
+      }
+    }
+  }
+  // Treffer gegen Spieler und Staffel
+  if (!player.dead) {
+    const hitWing = (x, y, r) => {
+      for (const w of [...wingmen]) {
+        const wx = player.x + w.side * 32;
+        if (Math.abs(x - wx) < r && Math.abs(y - player.y) < r) {
+          wingmen.splice(wingmen.indexOf(w), 1);
+          explode(wx, player.y, COLOR[w.type], 22); sfx.boom();
+          return true;
+        }
+      }
+      return false;
+    };
+    for (const b of [...ebullets]) {
+      if (player.inv <= 0 && Math.abs(b.x - player.x) < 12 && Math.abs(b.y - player.y) < 12) { ebullets.splice(ebullets.indexOf(b), 1); killPlayer(); break; }
+      if (hitWing(b.x, b.y, 13)) ebullets.splice(ebullets.indexOf(b), 1);
+    }
+    for (const e of [...enemies]) {
+      if (e.mode !== 'dive' && e.mode !== 'enter' && e.mode !== 'return') continue;
+      if (player.inv <= 0 && !player.dead && Math.abs(e.x - player.x) < 24 && Math.abs(e.y - player.y) < 22) { kill(e); killPlayer(); break; }
+      if (hitWing(e.x, e.y, 24)) kill(e);
+    }
+  }
+
+  // Stufe geschafft
+  if (enemies.length === 0 && !player.dead) {
+    const bonus = wingmen.length * 500;
+    score += bonus;
+    if (bonus) popups.push({ x: W / 2, y: 330, text: `STAFFELBONUS +${bonus}`, t: 2, col: '#7dffb0' });
+    sfx.clear();
+    stage++;
+    state = 'between'; stageTimer = 2.2;
+  }
+  if (score > hi) hi = score;
+}
+function saveHi() { try { localStorage.setItem('schwarm-hi', String(hi)); } catch (e) {} }
+
+// ---------- Draw ----------
+function sprite(img, x, y, ang = 0, alpha = 1) {
+  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(Math.round(x), Math.round(y)); if (ang) ctx.rotate(ang);
+  ctx.drawImage(img, -img.width / 2, -img.height / 2); ctx.restore();
+}
+function text(s, x, y, size, col, align = 'center') {
+  ctx.font = `${size}px Silkscreen, "Courier New", monospace`;
+  ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.fillText(s, x, y);
+}
+function draw() {
+  ctx.fillStyle = '#07061a'; ctx.fillRect(0, 0, W, H);
+  for (const s of stars) {
+    const tw = 0.5 + 0.5 * Math.sin(T * 3 + s.x);
+    ctx.fillStyle = s.z > 0.75 ? `rgba(232,236,255,${0.5 + tw * 0.5})` : s.z > 0.45 ? 'rgba(180,140,255,0.6)' : 'rgba(94,242,255,0.35)';
+    ctx.fillRect(s.x | 0, s.y | 0, s.z > 0.75 ? 2 : 1, s.z > 0.75 ? 2 : 1);
+  }
+
+  if (state === 'title') return drawTitle();
+
+  // Fangstrahl
+  if (beam && !player.dead) {
+    const by = player.y - 14, top = by - 290, p = Math.min(1, beam.t / 0.25);
+    const reach = lerp(by, top, p);
+    const hwTop = 10 + ((by - reach) / 290) * 40;
+    ctx.save();
+    const g = ctx.createLinearGradient(0, by, 0, reach);
+    g.addColorStop(0, 'rgba(180,140,255,0.55)'); g.addColorStop(1, 'rgba(180,140,255,0.05)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.moveTo(player.x - 10, by); ctx.lineTo(player.x + 10, by); ctx.lineTo(player.x + hwTop, reach); ctx.lineTo(player.x - hwTop, reach); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(230,215,255,0.7)'; ctx.lineWidth = 2;
+    for (let i = 0; i < 6; i++) {
+      const f = ((T * 2.2 + i / 6) % 1), yy = lerp(by, reach, f), hw = 10 + ((by - yy) / 290) * 40;
+      ctx.globalAlpha = 1 - f; ctx.beginPath(); ctx.moveTo(player.x - hw, yy); ctx.lineTo(player.x + hw, yy); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Gegner
+  for (const e of enemies) {
+    if (e.mode === 'wait') continue;
+    const f = Math.floor(e.anim * (e.mode === 'form' ? 2.5 : 6)) % 2;
+    const set = e.type === 'W' && e.hp === 1 ? SPR.Wd : (e.mode === 'captured' ? ALLY[e.type] : SPR[e.type]);
+    sprite(set[f], e.x, e.y, e.ang);
+  }
+
+  // Spieler + Staffel
+  if (!player.dead && state !== 'over') {
+    const blink = player.inv > 0 && Math.floor(T * 12) % 2 === 0;
+    if (!blink) {
+      ctx.fillStyle = Math.floor(T * 20) % 2 ? '#ffb347' : '#ff4fa3';
+      ctx.fillRect(player.x - 7, player.y + 14, 3, 4 + Math.random() * 4); ctx.fillRect(player.x + 4, player.y + 14, 3, 4 + Math.random() * 4);
+      sprite(PLAYER, player.x, player.y);
+      for (const w of wingmen) {
+        const wx = player.x + w.side * 32, wy = player.y + 2 + Math.sin(T * 4 + w.side) * 2;
+        ctx.strokeStyle = 'rgba(125,255,176,0.35)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(wx, wy, 19, 0, Math.PI * 2); ctx.stroke();
+        sprite(ALLY[w.type][Math.floor(T * 6) % 2], wx, wy, Math.PI);
+      }
+    }
+  }
+
+  // Geschosse
+  for (const b of bullets) {
+    ctx.fillStyle = b.col; ctx.globalAlpha = 0.3; ctx.fillRect(b.x - 3, b.y - 2, 6, 14);
+    ctx.globalAlpha = 1; ctx.fillRect(b.x - 1, b.y, 3, 10);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(b.x - 1, b.y, 3, 3);
+  }
+  for (const b of ebullets) {
+    ctx.fillStyle = Math.floor(T * 16) % 2 ? '#ff4f6d' : '#ffe14f';
+    ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.PI / 4); ctx.fillRect(-3, -3, 6, 6); ctx.restore();
+  }
+  for (const p of parts) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.col; ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3); }
+  ctx.globalAlpha = 1;
+  for (const p of popups) text(p.text, p.x, p.y, 12, p.col || '#ffe14f');
+
+  drawHud();
+
+  if (banner && state === 'play') {
+    text(banner.text, W / 2, 320, 28, '#e8ecff');
+    if (stage === 1) text('Fang Stürzende mit dem Strahl ein', W / 2, 356, 12, '#b48cff');
+  }
+  if (state === 'between') text('STUFE GESCHAFFT', W / 2, 290, 24, '#7dffb0');
+  if (player && player.dead && lives > 0 && state === 'play' && player.timer <= 1.2) text('BEREIT', W / 2, 360, 20, '#5ef2ff');
+  if (paused) { ctx.fillStyle = 'rgba(7,6,26,0.6)'; ctx.fillRect(0, 0, W, H); text('PAUSE', W / 2, 300, 30, '#e8ecff'); text('P zum Weiterspielen', W / 2, 340, 12, '#8f8cc4'); }
+  if (state === 'over') {
+    ctx.fillStyle = 'rgba(7,6,26,0.65)'; ctx.fillRect(0, 0, W, H);
+    text('SPIEL VORBEI', W / 2, 270, 30, '#ff4fa3');
+    text(`${score} PUNKTE · STUFE ${stage}`, W / 2, 316, 14, '#e8ecff');
+    if (score >= hi && score > 0) text('NEUER REKORD', W / 2, 344, 14, '#ffc94a');
+    text('oder Leertaste drücken', W / 2, 455, 11, '#8f8cc4');
+  }
+}
+function drawHud() {
+  text('PUNKTE', 16, 18, 10, '#ff4fa3', 'left'); text(String(score).padStart(6, '0'), 16, 34, 14, '#e8ecff', 'left');
+  text('REKORD', W / 2, 18, 10, '#ff4fa3'); text(String(hi).padStart(6, '0'), W / 2, 34, 14, '#e8ecff');
+  text('STUFE', W - 16, 18, 10, '#ff4fa3', 'right'); text(String(stage), W - 16, 34, 14, '#e8ecff', 'right');
+  // Leben
+  for (let i = 0; i < Math.max(0, lives - (player && !player.dead ? 1 : 0)); i++) {
+    ctx.save(); ctx.globalAlpha = 0.9; ctx.translate(22 + i * 26, H - 18); ctx.scale(0.6, 0.6); ctx.drawImage(PLAYER, -PLAYER.width / 2, -PLAYER.height / 2); ctx.restore();
+  }
+  // Energie
+  const bw = 130, bx = W - 16 - bw, by = H - 24;
+  const full = energy >= 100, slotsFull = wingmen.length >= 2;
+  text(slotsFull ? 'STAFFEL VOLL' : full ? 'STRAHL BEREIT · X' : 'FANGSTRAHL', W - 16, by - 10, 9, full && !slotsFull ? (Math.floor(T * 4) % 2 ? '#e6d7ff' : '#b48cff') : '#8f8cc4', 'right');
+  ctx.strokeStyle = '#2a2660'; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, 10);
+  ctx.fillStyle = full ? '#b48cff' : '#5b4a99'; ctx.fillRect(bx + 2, by + 2, (bw - 4) * energy / 100, 6);
+  for (let i = 1; i < 5; i++) { ctx.fillStyle = '#07061a'; ctx.fillRect(bx + (bw / 5) * i, by + 2, 2, 6); }
+}
+function drawTitle() {
+  text('SCHWARM', W / 2, 170, 44, '#e8ecff');
+  text('FÄNGER', W / 2, 220, 44, '#ff4fa3');
+  const order = ['D', 'S', 'W', 'S', 'D'];
+  order.forEach((t, i) => sprite(SPR[t][Math.floor(T * 3 + i) % 2], W / 2 + (i - 2) * 56, 300 + Math.sin(T * 2 + i) * 8));
+  // kleine Demo: Strahl fängt
+  const px = W / 2, py = 470;
+  const ph = (T % 3) / 3;
+  ctx.fillStyle = 'rgba(180,140,255,0.25)';
+  ctx.beginPath(); ctx.moveTo(px - 8, py - 12); ctx.lineTo(px + 8, py - 12); ctx.lineTo(px + 30, py - 110); ctx.lineTo(px - 30, py - 110); ctx.closePath(); ctx.fill();
+  sprite(ALLY.S[Math.floor(T * 6) % 2], px, lerp(py - 110, py - 30, ease(ph)), ph * 10);
+  sprite(PLAYER, px, py);
+  text(`REKORD ${String(hi).padStart(6, '0')}`, W / 2, 515, 12, '#8f8cc4');
+  text('oder Leertaste drücken', W / 2, 610, 11, '#8f8cc4');
+}
+
+// ---------- Loop ----------
+let last = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.max(0, Math.min(0.033, (now - last) / 1000)); last = now;
+  if (state === 'between') {
+    stageTimer -= dt;
+    T += dt;
+    for (const p of parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }
+    parts = parts.filter(p => p.life > 0);
+    for (const p of popups) { p.t -= dt; p.y -= 20 * dt; }
+    popups = popups.filter(p => p.t > 0);
+    if (stageTimer <= 0) { saveHi(); startStage(); }
+  } else update(dt);
+  draw();
+  syncStart();
+}
+requestAnimationFrame(loop);
+
+// Als installierte App offline spielbar (nur wenn über https gehostet)
+if ('serviceWorker' in navigator && location.protocol === 'https:' && !location.hostname.endsWith('claude.ai') && !location.hostname.endsWith('claudeusercontent.com')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+})();
+</script>
