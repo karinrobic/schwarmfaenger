@@ -1,7 +1,7 @@
 // Offline-Cache für Schwarmfänger.
 // Die Seite selbst wird immer zuerst frisch aus dem Netz geholt (Updates kommen sofort an),
 // der Cache dient nur als Rückfall ohne Internet. Bei Änderungen VERSION erhöhen.
-const VERSION = 'schwarm-v3';
+const VERSION = 'schwarm-v4';
 const FILES = [
   './',
   './index.html',

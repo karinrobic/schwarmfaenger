@@ -107,6 +107,23 @@ h1 {
 .roster canvas { width: 33px; height: auto; aspect-ratio: auto; border: 0; box-shadow: none; background: transparent; border-radius: 0; }
 .roster b { font-weight: 600; }
 .roster span { color: var(--dim); font-size: 13px; display: block; }
+.guide-btn {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%;
+  font-family: var(--f-display); font-weight: 700; font-size: 15px; letter-spacing: 0.08em;
+  color: var(--beam); background: var(--panel);
+  border: 2px solid var(--beam); border-radius: 8px; padding: 14px 16px; cursor: pointer;
+}
+.guide-btn:hover { background: #1d1a4a; }
+.guide-btn:focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
+.guide-btn .chev { font-size: 18px; transition: transform 0.2s; }
+.guide-btn[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+.guide { display: flex; flex-direction: column; gap: 18px; }
+[hidden] { display: none !important; }
+.mobile h1 { font-size: 24px; overflow-wrap: anywhere; }
+.tc { display: none; }
+.touch .tc { display: block; }
+.touch .kb { display: none; }
+@media (prefers-reduced-motion: reduce) { .guide-btn .chev { transition: none; } }
 </style>
 
 <div class="wrap">
@@ -123,6 +140,10 @@ h1 {
     </div>
   </div>
   <aside>
+    <button id="guideBtn" class="guide-btn" type="button" aria-expanded="true" aria-controls="guide">
+      <span>SPIELANLEITUNG</span><span class="chev" aria-hidden="true">▾</span>
+    </button>
+    <div id="guide" class="guide">
     <div>
       <h1>Schwarmfänger</h1>
       <p class="sub">Ein Insektenschwarm sammelt sich über dir und stürzt sich in Wellen herab. Diesmal hast du den Fangstrahl.</p>
@@ -134,23 +155,28 @@ h1 {
     <div class="card">
       <h2>STEUERUNG</h2>
       <dl class="keys">
-        <dt>← →  A D</dt><dd>Bewegen</dd>
-        <dt>LEERTASTE</dt><dd>Feuern (gedrückt halten)</dd>
-        <dt>X  ↑</dt><dd>Fangstrahl, wenn die Leiste voll ist</dd>
-        <dt>P</dt><dd>Pause</dd>
-        <dt>M</dt><dd>Ton an/aus</dd>
+        <dt class="kb">← →  A D</dt><dd class="kb">Bewegen</dd>
+        <dt class="kb">LEERTASTE</dt><dd class="kb">Feuern (gedrückt halten)</dd>
+        <dt class="kb">X  ↑</dt><dd class="kb">Fangstrahl, wenn die Leiste voll ist</dd>
+        <dt class="kb">P</dt><dd class="kb">Pause</dd>
+        <dt class="kb">M</dt><dd class="kb">Ton an/aus</dd>
+        <dt class="tc">◀ ▶</dt><dd class="tc">Bewegen</dd>
+        <dt class="tc">FEUER</dt><dd class="tc">Feuern (gedrückt halten)</dd>
+        <dt class="tc">STRAHL</dt><dd class="tc">Fangstrahl, wenn die Leiste unten rechts voll ist</dd>
+        <dt class="tc">TIPPEN</dt><dd class="tc">Ins Spielfeld tippen setzt eine Pause fort</dd>
       </dl>
     </div>
     <div class="card">
       <h2>DER SCHWARM</h2>
       <ul class="roster" id="roster"></ul>
     </div>
+    </div>
   </aside>
 </div>
 
 <script>
 (() => {
-const GAME_VERSION = '1.3';
+const GAME_VERSION = '1.4';
 const TOUCH = navigator.maxTouchPoints > 0 || 'ontouchstart' in window || matchMedia('(pointer: coarse)').matches;
 if (TOUCH) document.documentElement.classList.add('touch');
 // Auf dem Handy: schmaleres, höheres Spielfeld, damit alles größer erscheint
@@ -171,6 +197,19 @@ function layout() {
 }
 layout();
 addEventListener('resize', layout);
+
+// Spielanleitung auf- und zuklappen (auf dem Handy anfangs zu)
+const guideBtn = document.getElementById('guideBtn'), guide = document.getElementById('guide');
+function setGuide(open, scroll) {
+  guide.hidden = !open;
+  guideBtn.setAttribute('aria-expanded', String(open));
+  try { localStorage.setItem('schwarm-guide', open ? '1' : '0'); } catch (e) {}
+  if (open && scroll) guideBtn.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+let guideOpen = !MOBILE;
+try { const s = localStorage.getItem('schwarm-guide'); if (s !== null) guideOpen = s === '1'; } catch (e) {}
+setGuide(guideOpen, false);
+guideBtn.addEventListener('click', () => setGuide(guide.hidden, MOBILE));
 const ctx = cv.getContext('2d');
 function fit() {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
