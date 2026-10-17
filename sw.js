@@ -1,5 +1,5 @@
 // Offline-Cache für Schwarmfänger. Bei Änderungen am Spiel VERSION erhöhen.
-const VERSION = 'schwarm-v1';
+const VERSION = 'schwarm-v2';
 const FILES = [
   './',
   './index.html',

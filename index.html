@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Schwarmfänger</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="manifest" href="manifest.webmanifest">
@@ -66,12 +68,18 @@ canvas {
 .start:hover { background: #8ff7ff; }
 .start:active { transform: translate(-50%, calc(-50% + 3px)); box-shadow: 0 1px 0 #2a9fb0; }
 .start:focus-visible { outline: 3px solid var(--magenta); outline-offset: 4px; }
-.start.over { top: 64%; background: var(--magenta); box-shadow: 0 4px 0 #a32c68, 0 0 30px rgba(255, 79, 163, 0.45); }
+.start.over { background: var(--magenta); box-shadow: 0 4px 0 #a32c68, 0 0 30px rgba(255, 79, 163, 0.45); }
 @keyframes pulse { 50% { filter: brightness(1.15); } }
 @media (prefers-reduced-motion: reduce) { .start { animation: none; } }
 .pad { display: none; width: 100%; gap: 8px; grid-template-columns: 1fr 1fr 1.3fr 1.3fr; }
 @media (pointer: coarse) { .pad { display: grid; } }
 .touch .pad { display: grid; }
+/* Handy: schmale Ränder, damit das Spielfeld fast die ganze Breite nutzt */
+.mobile body { padding-left: max(6px, env(safe-area-inset-left, 0px)); padding-right: max(6px, env(safe-area-inset-right, 0px)); padding-block: 6px; }
+.mobile .cab { gap: 8px; }
+.mobile canvas { border-width: 1px; box-shadow: none; border-radius: 4px; }
+.mobile .pad button { padding-block: 16px; font-size: 14px; }
+.mobile aside { padding-inline: 10px; box-sizing: border-box; }
 .pad button {
   font-family: var(--f-display); font-size: 13px; color: var(--ink);
   background: var(--panel); border: 2px solid var(--line); border-radius: 8px;
@@ -142,9 +150,26 @@ h1 {
 
 <script>
 (() => {
-const W = 480, H = 640;
-if (navigator.maxTouchPoints > 0 || 'ontouchstart' in window) document.documentElement.classList.add('touch');
+const TOUCH = navigator.maxTouchPoints > 0 || 'ontouchstart' in window || matchMedia('(pointer: coarse)').matches;
+if (TOUCH) document.documentElement.classList.add('touch');
+// Auf dem Handy: schmaleres, höheres Spielfeld, damit alles größer erscheint
+const MOBILE = TOUCH && Math.min(innerWidth, screen.width || innerWidth) < 700;
+const PAD_SPACE = 84;
+let W = 480, H = 640;
+if (MOBILE) {
+  document.documentElement.classList.add('mobile');
+  W = 400;
+  H = Math.round(Math.max(600, Math.min(800, W * (innerHeight - PAD_SPACE) / (innerWidth - 12))));
+}
+const DY = (H - 640) / 2;
 const cv = document.getElementById('game');
+cv.style.aspectRatio = `${W} / ${H}`;
+function layout() {
+  if (!MOBILE) return;
+  document.querySelector('.cab').style.width = Math.floor(Math.min(innerWidth - 12, (innerHeight - PAD_SPACE) * W / H)) + 'px';
+}
+layout();
+addEventListener('resize', layout);
 const ctx = cv.getContext('2d');
 function fit() {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -314,7 +339,7 @@ function newGame() {
   startStage();
 }
 function startStage() {
-  player = player && !player.dead ? player : { x: W / 2, y: 590, dead: false, timer: 0, inv: 0, cd: 0 };
+  player = player && !player.dead ? player : { x: W / 2, y: H - 50, dead: false, timer: 0, inv: 0, cd: 0 };
   player.x = player.x || W / 2;
   bullets = []; ebullets = []; parts = parts || []; popups = [];
   beam = null;
@@ -340,9 +365,9 @@ function startStage() {
   });
 }
 function slotPos(e) {
-  const sway = Math.sin(T * 0.9) * 28;
+  const sway = Math.sin(T * 0.9) * (W >= 480 ? 28 : 16), gap = W >= 480 ? 38 : 34;
   const br = stage >= 3 ? Math.sin(T * 1.7) * 0.07 : 0;
-  return { x: W / 2 + (e.c - 4.5) * 38 * (1 + br) + sway, y: 84 + e.r * 36 * (1 + br * 0.6) };
+  return { x: W / 2 + (e.c - 4.5) * gap * (1 + br) + sway, y: 84 + e.r * 36 * (1 + br * 0.6) };
 }
 function setPos(e, q) {
   const dx = q.x - e.x, dy = q.y - e.y;
@@ -372,13 +397,15 @@ document.querySelectorAll('#pad button').forEach(b => {
   b.addEventListener('pointerdown', on);
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => b.addEventListener(ev, off));
 });
-cv.addEventListener('pointerdown', () => { cv.focus(); if (state === 'title' || state === 'over') newGame(); });
+cv.addEventListener('pointerdown', () => { cv.focus(); if (paused) paused = false; else if (state === 'title' || state === 'over') newGame(); });
 const startBtn = document.getElementById('start');
 startBtn.addEventListener('click', () => { newGame(); syncStart(); cv.focus({ preventScroll: true }); });
 function syncStart() {
   const show = state === 'title' || state === 'over';
   if (startBtn.hidden === show) startBtn.hidden = !show;
   startBtn.classList.toggle('over', state === 'over');
+  const top = (((state === 'over' ? 410 : 550) + DY) / H * 100).toFixed(1) + '%';
+  if (startBtn.style.top !== top) startBtn.style.top = top;
   const label = state === 'over' ? 'NOCHMAL SPIELEN' : 'SPIEL STARTEN';
   if (startBtn.textContent !== label) startBtn.textContent = label;
 }
@@ -446,7 +473,7 @@ function startDive(e, delay = 0) {
   e.mode = 'dive'; e.t = -delay; e.dur = Math.max(1.9, 2.8 - stage * 0.09);
   e.p0 = { x: e.x, y: e.y };
   e.p1 = { x: e.x + side * 120, y: e.y - 80 };
-  e.p2 = { x: tx - side * 160, y: 430 };
+  e.p2 = { x: tx - side * 160, y: H * 0.67 };
   e.p3 = { x: tx + side * 70, y: H + 40 };
   const n = Math.min(3, 1 + Math.floor(stage / 2)) + (e.type === 'W' ? 1 : 0);
   e.shots = Array.from({ length: n }, () => rand(0.3, 0.65)).sort();
@@ -692,18 +719,18 @@ function draw() {
   drawHud();
 
   if (banner && state === 'play') {
-    text(banner.text, W / 2, 320, 28, '#e8ecff');
-    if (stage === 1) text('Fang Stürzende mit dem Strahl ein', W / 2, 356, 12, '#b48cff');
+    text(banner.text, W / 2, 320 + DY, 28, '#e8ecff');
+    if (stage === 1) text('Fang Stürzende mit dem Strahl ein', W / 2, 356 + DY, 12, '#b48cff');
   }
-  if (state === 'between') text('STUFE GESCHAFFT', W / 2, 290, 24, '#7dffb0');
-  if (player && player.dead && lives > 0 && state === 'play' && player.timer <= 1.2) text('BEREIT', W / 2, 360, 20, '#5ef2ff');
-  if (paused) { ctx.fillStyle = 'rgba(7,6,26,0.6)'; ctx.fillRect(0, 0, W, H); text('PAUSE', W / 2, 300, 30, '#e8ecff'); text('P zum Weiterspielen', W / 2, 340, 12, '#8f8cc4'); }
+  if (state === 'between') text('STUFE GESCHAFFT', W / 2, 290 + DY, 24, '#7dffb0');
+  if (player && player.dead && lives > 0 && state === 'play' && player.timer <= 1.2) text('BEREIT', W / 2, 360 + DY, 20, '#5ef2ff');
+  if (paused) { ctx.fillStyle = 'rgba(7,6,26,0.6)'; ctx.fillRect(0, 0, W, H); text('PAUSE', W / 2, 300 + DY, 30, '#e8ecff'); text(TOUCH ? 'Tippen zum Weiterspielen' : 'P zum Weiterspielen', W / 2, 340 + DY, 12, '#8f8cc4'); }
   if (state === 'over') {
     ctx.fillStyle = 'rgba(7,6,26,0.65)'; ctx.fillRect(0, 0, W, H);
-    text('SPIEL VORBEI', W / 2, 270, 30, '#ff4fa3');
-    text(`${score} PUNKTE · STUFE ${stage}`, W / 2, 316, 14, '#e8ecff');
-    if (score >= hi && score > 0) text('NEUER REKORD', W / 2, 344, 14, '#ffc94a');
-    text('oder Leertaste drücken', W / 2, 455, 11, '#8f8cc4');
+    text('SPIEL VORBEI', W / 2, 270 + DY, 30, '#ff4fa3');
+    text(`${score} PUNKTE · STUFE ${stage}`, W / 2, 316 + DY, 14, '#e8ecff');
+    if (score >= hi && score > 0) text('NEUER REKORD', W / 2, 344 + DY, 14, '#ffc94a');
+    if (!TOUCH) text('oder Leertaste drücken', W / 2, 455 + DY, 11, '#8f8cc4');
   }
 }
 function drawHud() {
@@ -723,6 +750,11 @@ function drawHud() {
   for (let i = 1; i < 5; i++) { ctx.fillStyle = '#07061a'; ctx.fillRect(bx + (bw / 5) * i, by + 2, 2, 6); }
 }
 function drawTitle() {
+  ctx.save(); ctx.translate(0, DY);
+  drawTitleBody();
+  ctx.restore();
+}
+function drawTitleBody() {
   text('SCHWARM', W / 2, 170, 44, '#e8ecff');
   text('FÄNGER', W / 2, 220, 44, '#ff4fa3');
   const order = ['D', 'S', 'W', 'S', 'D'];
@@ -735,7 +767,7 @@ function drawTitle() {
   sprite(ALLY.S[Math.floor(T * 6) % 2], px, lerp(py - 110, py - 30, ease(ph)), ph * 10);
   sprite(PLAYER, px, py);
   text(`REKORD ${String(hi).padStart(6, '0')}`, W / 2, 515, 12, '#8f8cc4');
-  text('oder Leertaste drücken', W / 2, 610, 11, '#8f8cc4');
+  if (!TOUCH) text('oder Leertaste drücken', W / 2, 610, 11, '#8f8cc4');
 }
 
 // ---------- Loop ----------
