@@ -69,6 +69,12 @@ canvas {
 .start:active { transform: translate(-50%, calc(-50% + 3px)); box-shadow: 0 1px 0 #2a9fb0; }
 .start:focus-visible { outline: 3px solid var(--magenta); outline-offset: 4px; }
 .start.over { background: var(--magenta); box-shadow: 0 4px 0 #a32c68, 0 0 30px rgba(255, 79, 163, 0.45); }
+.start.howto {
+  font-size: clamp(8px, 3.4cqw, 15px); color: var(--beam); background: var(--panel);
+  border: 2px solid var(--beam); box-shadow: none; animation: none; padding: 0.6em 1.2em;
+}
+.start.howto:hover { background: #1d1a4a; }
+.start.howto:active { transform: translate(-50%, calc(-50% + 2px)); box-shadow: none; }
 @keyframes pulse { 50% { filter: brightness(1.15); } }
 @media (prefers-reduced-motion: reduce) { .start { animation: none; } }
 .pad { display: none; width: 100%; gap: 8px; grid-template-columns: 1fr 1fr 1.3fr 1.3fr; }
@@ -131,6 +137,7 @@ h1 {
     <div class="screen">
       <canvas id="game" width="480" height="640" aria-label="Spielfeld Schwarmfänger" tabindex="0"></canvas>
       <button id="start" class="start" type="button">SPIEL STARTEN</button>
+      <button id="howto" class="start howto" type="button" hidden>SPIELANLEITUNG</button>
     </div>
     <div class="pad" id="pad">
       <button data-k="left" aria-label="Nach links">◀</button>
@@ -176,7 +183,7 @@ h1 {
 
 <script>
 (() => {
-const GAME_VERSION = '1.4';
+const GAME_VERSION = '1.5';
 const TOUCH = navigator.maxTouchPoints > 0 || 'ontouchstart' in window || matchMedia('(pointer: coarse)').matches;
 if (TOUCH) document.documentElement.classList.add('touch');
 // Auf dem Handy: schmaleres, höheres Spielfeld, damit alles größer erscheint
@@ -440,12 +447,18 @@ document.querySelectorAll('#pad button').forEach(b => {
 cv.addEventListener('pointerdown', () => { cv.focus(); if (paused) paused = false; else if (state === 'title' || state === 'over') newGame(); });
 const startBtn = document.getElementById('start');
 startBtn.addEventListener('click', () => { newGame(); syncStart(); cv.focus({ preventScroll: true }); });
+const howtoBtn = document.getElementById('howto');
+howtoBtn.addEventListener('click', () => setGuide(true, true));
 function syncStart() {
   const show = state === 'title' || state === 'over';
   if (startBtn.hidden === show) startBtn.hidden = !show;
   startBtn.classList.toggle('over', state === 'over');
   const top = (((state === 'over' ? 410 : 550) + DY) / H * 100).toFixed(1) + '%';
   if (startBtn.style.top !== top) startBtn.style.top = top;
+  const showHowto = MOBILE && state === 'title';
+  if (howtoBtn.hidden === showHowto) howtoBtn.hidden = !showHowto;
+  const htop = ((612 + DY) / H * 100).toFixed(1) + '%';
+  if (howtoBtn.style.top !== htop) howtoBtn.style.top = htop;
   const label = state === 'over' ? 'NOCHMAL SPIELEN' : 'SPIEL STARTEN';
   if (startBtn.textContent !== label) startBtn.textContent = label;
 }
